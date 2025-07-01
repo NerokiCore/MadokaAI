@@ -6,12 +6,11 @@
     <title>MadokaAI</title>
     <style>
         :root {
-            --pink-light: #FFF0F5; 
-            --pink-primary: #FF69B4; 
-            --pink-dark: #C71585; 
+            --pink-light: #FFF0F5;
+            --pink-primary: #FF69B4;
+            --pink-dark: #C71585;
             --black-amoled: #000000;
             --white-soft: #f9f9f9;
-
             --bg-body: var(--pink-light);
             --bg-chat: var(--white-soft);
             --header-bg: var(--pink-primary);
@@ -24,7 +23,6 @@
             --border-color: #ddd;
             --shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
         }
-
         html.dark-theme {
             --bg-body: var(--black-amoled);
             --bg-chat: #121212;
@@ -38,29 +36,19 @@
             --border-color: #333;
             --shadow: 0 4px 20px rgba(255, 105, 180, 0.2);
         }
-
         @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(15px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
         }
-
         @keyframes typing {
             0% { opacity: 0.2; }
             20% { opacity: 1; }
             100% { opacity: 0.2; }
         }
-
         * {
             box-sizing: border-box;
             transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease;
         }
-
         body {
             font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
             margin: 0;
@@ -72,7 +60,6 @@
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
         }
-
         #chat-container {
             width: 100%;
             max-width: 600px;
@@ -85,7 +72,6 @@
             flex-direction: column;
             overflow: hidden;
         }
-
         #chat-header {
             background: var(--header-bg);
             color: var(--header-text);
@@ -95,13 +81,11 @@
             align-items: center;
             flex-shrink: 0;
         }
-
         #chat-header h1 {
             margin: 0;
             font-size: 20px;
             font-weight: 600;
         }
-
         #theme-toggle {
             background: none;
             border: none;
@@ -109,7 +93,6 @@
             font-size: 24px;
             cursor: pointer;
         }
-
         #chat-box {
             flex-grow: 1;
             padding: 25px;
@@ -118,13 +101,11 @@
             flex-direction: column;
             gap: 12px;
         }
-
         .message {
             display: flex;
             max-width: 75%;
             animation: fadeIn 0.5s ease-out;
         }
-        
         .message p {
             padding: 12px 18px;
             border-radius: 22px;
@@ -132,7 +113,6 @@
             line-height: 1.5;
             word-wrap: break-word;
         }
-
         .ia-message {
             align-self: flex-start;
         }
@@ -141,7 +121,6 @@
             color: var(--text-primary);
             border-bottom-left-radius: 5px;
         }
-        
         .user-message {
             align-self: flex-end;
         }
@@ -150,24 +129,6 @@
             color: var(--user-bubble-text);
             border-bottom-right-radius: 5px;
         }
-
-        .loading-indicator {
-            display: flex;
-            align-self: flex-start;
-            padding: 12px 18px;
-        }
-        .loading-indicator span {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background-color: var(--text-primary);
-            margin: 0 2px;
-            animation: typing 1.4s infinite ease-in-out both;
-        }
-        .loading-indicator span:nth-child(2) { animation-delay: 0.2s; }
-        .loading-indicator span:nth-child(3) { animation-delay: 0.4s; }
-
         #input-area {
             padding: 20px 25px;
             border-top: 1px solid var(--border-color);
@@ -177,7 +138,6 @@
             background-color: var(--bg-chat);
             flex-shrink: 0;
         }
-
         #user-input {
             flex-grow: 1;
             border: 1px solid var(--border-color);
@@ -191,7 +151,6 @@
         #user-input:focus {
             border-color: var(--pink-primary);
         }
-
         #send-button {
             background-color: var(--pink-primary);
             color: var(--white-soft);
@@ -218,13 +177,11 @@
         <h1>MadokaAI</h1>
         <button id="theme-toggle">🌙</button>
     </header>
-
     <main id="chat-box">
         <div class="message ia-message">
             <p>Olá! Agora eu consigo responder em tempo real. Pode perguntar!</p>
         </div>
     </main>
-
     <footer id="input-area">
         <input type="text" id="user-input" placeholder="Converse com a MadokaAI...">
         <button id="send-button">→</button>
@@ -237,7 +194,7 @@
     const sendButton = document.getElementById('send-button');
     const themeToggle = document.getElementById('theme-toggle');
     const htmlEl = document.documentElement;
---
+
     function applyTheme(theme) {
         if (theme === 'dark') {
             htmlEl.classList.add('dark-theme');
@@ -247,8 +204,10 @@
             themeToggle.textContent = '🌙';
         }
     }
+
     const savedTheme = localStorage.getItem('theme') || 'light';
     applyTheme(savedTheme);
+
     themeToggle.addEventListener('click', () => {
         const newTheme = htmlEl.classList.contains('dark-theme') ? 'light' : 'dark';
         applyTheme(newTheme);
@@ -272,7 +231,7 @@
         messageDiv.appendChild(p);
         chatBox.appendChild(messageDiv);
         chatBox.scrollTop = chatBox.scrollHeight;
-        return p; 
+        return p;
     }
 
     async function sendMessageToAI() {
@@ -302,12 +261,11 @@
             
             while (true) {
                 const { value, done } = await reader.read();
-                if (done) {
-                    break; 
-                }
+                if (done) break;
+                
                 const chunk = decoder.decode(value);
-                aiMessageP.textContent += chunk; 
-                chatBox.scrollTop = chatBox.scrollHeight; 
+                aiMessageP.textContent += chunk;
+                chatBox.scrollTop = chatBox.scrollHeight;
             }
 
         } catch (error) {
