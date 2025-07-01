@@ -230,7 +230,7 @@
     </header>
     <main id="chat-box">
         <div class="message ia-message">
-            <p>Olá! Peça um código e eu o formatarei para você.</p>
+            <p>Olá! Como posso te ajudar hoje?</p>
         </div>
     </main>
     <footer id="input-area">
@@ -315,7 +315,7 @@
         for (const char of text) {
             element.textContent += char;
             chatBox.scrollTop = chatBox.scrollHeight;
-            await delay(15);
+            await delay(10);
         }
     }
 
@@ -345,13 +345,22 @@
         }
     }
     
+    function displayError(error) {
+        const p_error = document.createElement('p');
+        p_error.textContent = `Desculpe, algo deu errado. (Detalhe: ${error.message})`;
+        const div_error = document.createElement('div');
+        div_error.className = 'message ia-message';
+        div_error.appendChild(p_error);
+        chatBox.appendChild(div_error);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
     async function sendMessageToAI() {
         const userText = userInput.value.trim();
-        if (userText === "") return;
+        if (userText === "" || sendButton.disabled) return;
 
         addUserMessage(userText);
         userInput.value = "";
-        
         sendButton.disabled = true;
 
         try {
@@ -362,20 +371,20 @@
             });
 
             if (!response.ok) {
-                throw new Error(`Erro na rede: ${response.status}`);
+                throw new Error(`O servidor respondeu com status ${response.status}`);
             }
             
             const data = await response.json();
+            
+            if (!data.reply) {
+                throw new Error("A resposta do servidor não contém a chave 'reply'.");
+            }
+            
             await renderResponse(data.reply);
 
         } catch (error) {
-            console.error('Erro ao chamar a API:', error);
-            const p_error = document.createElement('p');
-            p_error.textContent = 'Desculpe, algo deu errado. Tente novamente.';
-            const div_error = document.createElement('div');
-            div_error.className = 'message ia-message';
-            div_error.appendChild(p_error);
-            chatBox.appendChild(div_error);
+            console.error('Erro detalhado:', error);
+            displayError(error);
         } finally {
             sendButton.disabled = false;
         }
@@ -383,7 +392,7 @@
 
     sendButton.addEventListener('click', sendMessageToAI);
     userInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' && !sendButton.disabled) {
+        if (e.key === 'Enter') {
             sendMessageToAI();
         }
     });
