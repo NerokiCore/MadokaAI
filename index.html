@@ -151,12 +151,12 @@
             border-bottom-right-radius: 5px;
         }
 
-        #loading {
-            display: none;
+        .loading-indicator {
+            display: flex;
             align-self: flex-start;
             padding: 12px 18px;
         }
-        #loading span {
+        .loading-indicator span {
             display: inline-block;
             width: 8px;
             height: 8px;
@@ -165,8 +165,8 @@
             margin: 0 2px;
             animation: typing 1.4s infinite ease-in-out both;
         }
-        #loading span:nth-child(2) { animation-delay: 0.2s; }
-        #loading span:nth-child(3) { animation-delay: 0.4s; }
+        .loading-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .loading-indicator span:nth-child(3) { animation-delay: 0.4s; }
 
         #input-area {
             padding: 20px 25px;
@@ -221,13 +221,9 @@
 
     <main id="chat-box">
         <div class="message ia-message">
-            <p>Olá! Em que posso ajudar hoje?</p>
+            <p>Olá! Agora eu consigo responder em tempo real. Pode perguntar!</p>
         </div>
     </main>
-    
-    <div id="loading">
-        <span></span><span></span><span></span>
-    </div>
 
     <footer id="input-area">
         <input type="text" id="user-input" placeholder="Converse com a MadokaAI...">
@@ -239,10 +235,9 @@
     const chatBox = document.getElementById('chat-box');
     const userInput = document.getElementById('user-input');
     const sendButton = document.getElementById('send-button');
-    const loadingIndicator = document.getElementById('loading');
     const themeToggle = document.getElementById('theme-toggle');
     const htmlEl = document.documentElement;
-
+--
     function applyTheme(theme) {
         if (theme === 'dark') {
             htmlEl.classList.add('dark-theme');
@@ -252,24 +247,17 @@
             themeToggle.textContent = '🌙';
         }
     }
-
     const savedTheme = localStorage.getItem('theme') || 'light';
     applyTheme(savedTheme);
-
     themeToggle.addEventListener('click', () => {
         const newTheme = htmlEl.classList.contains('dark-theme') ? 'light' : 'dark';
         applyTheme(newTheme);
         localStorage.setItem('theme', newTheme);
     });
 
-    function addMessage(text, sender) {
-        const existingLoading = chatBox.querySelector('#loading-wrapper');
-        if (existingLoading) {
-            existingLoading.remove();
-        }
-
+    function addUserMessage(text) {
         const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${sender}-message`;
+        messageDiv.className = 'message user-message';
         const p = document.createElement('p');
         p.textContent = text;
         messageDiv.appendChild(p);
@@ -277,25 +265,26 @@
         chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    function showLoading() {
-        const loadingWrapper = document.createElement('div');
-        loadingWrapper.id = 'loading-wrapper';
-        loadingWrapper.className = 'message ia-message';
-        loadingWrapper.innerHTML = `
-            <div id="loading">
-                <span></span><span></span><span></span>
-            </div>`;
-        chatBox.appendChild(loadingWrapper);
+    function createAiMessage() {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message ia-message';
+        const p = document.createElement('p');
+        messageDiv.appendChild(p);
+        chatBox.appendChild(messageDiv);
         chatBox.scrollTop = chatBox.scrollHeight;
+        return p; 
     }
 
     async function sendMessageToAI() {
         const userText = userInput.value.trim();
         if (userText === "") return;
 
-        addMessage(userText, 'user');
+        addUserMessage(userText);
         userInput.value = "";
-        showLoading();
+        
+        sendButton.disabled = true;
+
+        const aiMessageP = createAiMessage();
 
         try {
             const response = await fetch('/api/chat', {
@@ -305,15 +294,27 @@
             });
 
             if (!response.ok) {
-                throw new Error('A resposta da rede não foi boa.');
+                throw new Error(`Erro na rede: ${response.status}`);
             }
 
-            const data = await response.json();
-            addMessage(data.reply, 'ia');
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) {
+                    break; 
+                }
+                const chunk = decoder.decode(value);
+                aiMessageP.textContent += chunk; 
+                chatBox.scrollTop = chatBox.scrollHeight; 
+            }
 
         } catch (error) {
-            console.error('Erro ao chamar a API:', error);
-            addMessage('Desculpe, algo deu errado. Tente novamente.', 'ia');
+            console.error('Erro ao chamar a API ou ler a stream:', error);
+            aiMessageP.textContent = 'Desculpe, algo deu errado. Tente novamente.';
+        } finally {
+            sendButton.disabled = false;
         }
     }
 
