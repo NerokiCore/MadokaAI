@@ -2,45 +2,28 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-export const config = {
-  runtime: 'edge',
-};
-
-export default async function handler(req) {
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Método não permitido' }), { status: 405 });
+    return res.status(405).json({ error: 'Método não permitido' });
   }
 
   try {
-    const { message } = await req.json();
+    const { message } = req.body;
 
     if (!message) {
-      return new Response(JSON.stringify({ error: 'Nenhuma mensagem fornecida.' }), { status: 400 });
+      return res.status(400).json({ error: 'Nenhuma mensagem fornecida.' });
     }
     
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
     
-    const result = await model.generateContentStream([message]);
+    const result = await model.generateContent(message);
+    const response = await result.response;
+    const text = response.text();
 
-    const stream = new ReadableStream({
-      async start(controller) {
-        for await (const chunk of result.stream) {
-          const chunkText = chunk.text();
-          controller.enqueue(new TextEncoder().encode(chunkText));
-        }
-        controller.close();
-      },
-    });
-
-    return new Response(stream, {
-      headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
-        'X-Content-Type-Options': 'nosniff',
-      },
-    });
+    res.status(200).json({ reply: text });
 
   } catch (error) {
     console.error('Erro no servidor da API:', error);
-    return new Response(JSON.stringify({ error: 'Falha ao se comunicar com a IA.' }), { status: 500 });
+    res.status(500).json({ error: 'Falha ao se comunicar com a IA.' });
   }
 }
