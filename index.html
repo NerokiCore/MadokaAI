@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MadokaAI</title>
-    
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 
@@ -15,8 +15,10 @@
             --pink-dark: #C71585;
             --black-amoled: #000000;
             --white-soft: #f9f9f9;
-            --code-bg-dark: #282c34;
-            --code-bg-light: #f8f8f8;
+            --code-bg-light: #ffe7f0; /* Rosa bem claro para o código (claro) */
+            --code-border-light: var(--pink-primary);
+            --code-bg-dark: #1e1e1e; /* Cinza escuro para o código (escuro) */
+            --code-border-dark: var(--pink-primary);
             --bg-body: var(--pink-light);
             --bg-chat: var(--white-soft);
             --header-bg: var(--pink-primary);
@@ -29,6 +31,9 @@
             --border-color: #ddd;
             --shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
             --code-bg: var(--code-bg-light);
+            --code-border: var(--code-border-light);
+            --copy-btn-bg: #555;
+            --copy-btn-text: #eee;
         }
         html.dark-theme {
             --bg-body: var(--black-amoled);
@@ -43,10 +48,23 @@
             --border-color: #333;
             --shadow: 0 4px 20px rgba(255, 105, 180, 0.2);
             --code-bg: var(--code-bg-dark);
+            --code-border: var(--code-border-dark);
+            --copy-btn-bg: var(--pink-primary);
+            --copy-btn-text: var(--white-soft);
         }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(15px); }
             to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes typing {
+            0% { opacity: 0.2; }
+            20% { opacity: 1; }
+            100% { opacity: 0.2; }
+        }
+        @keyframes copied {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
         }
         * {
             box-sizing: border-box;
@@ -186,29 +204,36 @@
             background-color: var(--code-bg);
             border-radius: 12px;
             overflow: hidden;
-            border: 1px solid var(--border-color);
+            border: 1px solid var(--code-border);
         }
         .code-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background-color: rgba(0,0,0,0.2);
+            background-color: rgba(0,0,0,0.1);
             padding: 8px 15px;
-            color: #ccc;
+            color: var(--text-primary);
             font-size: 14px;
+            border-bottom: 1px solid var(--code-border);
         }
         .copy-btn {
-            background-color: #555;
-            color: #eee;
+            background-color: var(--copy-btn-bg);
+            color: var(--copy-btn-text);
             border: none;
-            padding: 5px 10px;
-            border-radius: 5px;
+            padding: 6px 12px;
+            border-radius: 8px;
             cursor: pointer;
             font-size: 12px;
-            transition: background-color 0.2s;
+            transition: background-color 0.2s, transform 0.1s ease-in-out;
         }
         .copy-btn:hover {
-            background-color: #777;
+            filter: brightness(1.1);
+        }
+        .copy-btn:active {
+            transform: scale(0.95);
+        }
+        .copied-animation {
+            animation: copied 0.5s ease-in-out;
         }
         .code-block pre {
             margin: 0;
@@ -218,6 +243,7 @@
         .code-block code {
             font-family: 'Courier New', Courier, monospace;
             font-size: 14px;
+            color: var(--text-primary);
         }
     </style>
 </head>
@@ -285,13 +311,15 @@
         const copyBtn = document.createElement('button');
         copyBtn.className = 'copy-btn';
         copyBtn.textContent = 'Copiar';
-        copyBtn.onclick = () => {
+        copyBtn.addEventListener('click', () => {
             navigator.clipboard.writeText(code);
             copyBtn.textContent = 'Copiado!';
+            copyBtn.classList.add('copied-animation');
             setTimeout(() => {
                 copyBtn.textContent = 'Copiar';
-            }, 2000);
-        };
+                copyBtn.classList.remove('copied-animation');
+            }, 1500);
+        });
         header.appendChild(langSpan);
         header.appendChild(copyBtn);
         const pre = document.createElement('pre');
@@ -320,16 +348,16 @@
     }
 
     async function renderResponse(responseText) {
-        const parts = responseText.split(/(```(?:\w+)?\n[\s\S]*?\n```)/g);
-        const codeRegex = /```(\w+)?\n([\s\S]*?)\n```/;
+        const parts = responseText.split(/(?<=\n) *`{3}(?:\w+)?\n[\s\S]*?\n`{3}/g);
+        const codeRegex = /`{3}(\w+)?\n([\s\S]*?)\n`{3}/;
 
         for (const part of parts) {
             if (part.trim() === '') continue;
 
             const codeMatch = part.match(codeRegex);
             if (codeMatch) {
-                const language = codeMatch[1] || '';
-                const code = codeMatch[2].trim();
+                const language = codeMatch()[1] || '';
+                const code = codeMatch()[2].trim();
                 const codeBlockElement = createCodeBlockElement(language, code);
                 chatBox.appendChild(codeBlockElement);
                 hljs.highlightElement(codeBlockElement.querySelector('code'));
@@ -344,8 +372,8 @@
             chatBox.scrollTop = chatBox.scrollHeight;
         }
     }
-    
-    function displayError(error) {
+
+    async function displayError(error) {
         const p_error = document.createElement('p');
         p_error.textContent = `Desculpe, algo deu errado. (Detalhe: ${error.message})`;
         const div_error = document.createElement('div');
@@ -373,13 +401,13 @@
             if (!response.ok) {
                 throw new Error(`O servidor respondeu com status ${response.status}`);
             }
-            
+
             const data = await response.json();
-            
+
             if (!data.reply) {
                 throw new Error("A resposta do servidor não contém a chave 'reply'.");
             }
-            
+
             await renderResponse(data.reply);
 
         } catch (error) {
