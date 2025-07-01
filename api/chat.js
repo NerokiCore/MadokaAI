@@ -13,7 +13,9 @@ export default async function handler(req, res) {
     if (!message) {
       return res.status(400).json({ error: 'Nenhuma mensagem fornecida.' });
     }
-    const model = genAI.getGenerativeModel({ model: "gemini-pro"});
+
+    const model = genAI.getGenerativeModel({ model: "gemini-1.0-pro" });
+    
     const result = await model.generateContent(message);
     const response = await result.response;
     const text = response.text();
@@ -21,6 +23,7 @@ export default async function handler(req, res) {
     res.status(200).json({ reply: text });
 
   } catch (error) {
+
     console.error('Erro no servidor da API:', error);
     res.status(500).json({ error: 'Falha ao se comunicar com a IA.' });
   }
