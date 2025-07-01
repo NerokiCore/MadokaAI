@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MadokaAI</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
     <style>
         :root {
             --pink-light: #FFF0F5;
@@ -11,6 +15,8 @@
             --pink-dark: #C71585;
             --black-amoled: #000000;
             --white-soft: #f9f9f9;
+            --code-bg-dark: #282c34;
+            --code-bg-light: #f8f8f8;
             --bg-body: var(--pink-light);
             --bg-chat: var(--white-soft);
             --header-bg: var(--pink-primary);
@@ -22,6 +28,7 @@
             --input-bg: #fff;
             --border-color: #ddd;
             --shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            --code-bg: var(--code-bg-light);
         }
         html.dark-theme {
             --bg-body: var(--black-amoled);
@@ -35,15 +42,11 @@
             --input-bg: #1e1e1e;
             --border-color: #333;
             --shadow: 0 4px 20px rgba(255, 105, 180, 0.2);
+            --code-bg: var(--code-bg-dark);
         }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(15px); }
             to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes typing {
-            0% { opacity: 0.2; }
-            20% { opacity: 1; }
-            100% { opacity: 0.2; }
         }
         * {
             box-sizing: border-box;
@@ -103,8 +106,9 @@
         }
         .message {
             display: flex;
-            max-width: 75%;
+            max-width: 95%;
             animation: fadeIn 0.5s ease-out;
+            flex-direction: column;
         }
         .message p {
             padding: 12px 18px;
@@ -112,22 +116,27 @@
             margin: 0;
             line-height: 1.5;
             word-wrap: break-word;
+            width: fit-content;
         }
         .ia-message {
             align-self: flex-start;
+            align-items: flex-start;
         }
         .ia-message p {
             background-color: var(--ia-bubble-bg);
             color: var(--text-primary);
             border-bottom-left-radius: 5px;
+            max-width: 100%;
         }
         .user-message {
             align-self: flex-end;
+            align-items: flex-end;
         }
         .user-message p {
             background: var(--user-bubble-bg);
             color: var(--user-bubble-text);
             border-bottom-right-radius: 5px;
+            max-width: 75%;
         }
         #input-area {
             padding: 20px 25px;
@@ -168,6 +177,48 @@
         #send-button:hover {
             filter: brightness(1.1);
         }
+        .code-block-wrapper {
+            width: 100%;
+            margin-top: 10px;
+            animation: fadeIn 0.5s ease-out;
+        }
+        .code-block {
+            background-color: var(--code-bg);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: rgba(0,0,0,0.2);
+            padding: 8px 15px;
+            color: #ccc;
+            font-size: 14px;
+        }
+        .copy-btn {
+            background-color: #555;
+            color: #eee;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background-color 0.2s;
+        }
+        .copy-btn:hover {
+            background-color: #777;
+        }
+        .code-block pre {
+            margin: 0;
+            padding: 15px;
+            overflow-x: auto;
+        }
+        .code-block code {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
@@ -179,7 +230,7 @@
     </header>
     <main id="chat-box">
         <div class="message ia-message">
-            <p>Olá! Agora eu consigo responder em tempo real. Pode perguntar!</p>
+            <p>Olá! Peça um código e eu o formatarei para você.</p>
         </div>
     </main>
     <footer id="input-area">
@@ -204,10 +255,8 @@
             themeToggle.textContent = '🌙';
         }
     }
-
     const savedTheme = localStorage.getItem('theme') || 'light';
     applyTheme(savedTheme);
-
     themeToggle.addEventListener('click', () => {
         const newTheme = htmlEl.classList.contains('dark-theme') ? 'light' : 'dark';
         applyTheme(newTheme);
@@ -224,16 +273,78 @@
         chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    function createAiMessage() {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = 'message ia-message';
-        const p = document.createElement('p');
-        messageDiv.appendChild(p);
-        chatBox.appendChild(messageDiv);
-        chatBox.scrollTop = chatBox.scrollHeight;
-        return p;
+    function createCodeBlockElement(language, code) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'code-block-wrapper ia-message';
+        const codeBlock = document.createElement('div');
+        codeBlock.className = 'code-block';
+        const header = document.createElement('div');
+        header.className = 'code-header';
+        const langSpan = document.createElement('span');
+        langSpan.textContent = language || 'código';
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'copy-btn';
+        copyBtn.textContent = 'Copiar';
+        copyBtn.onclick = () => {
+            navigator.clipboard.writeText(code);
+            copyBtn.textContent = 'Copiado!';
+            setTimeout(() => {
+                copyBtn.textContent = 'Copiar';
+            }, 2000);
+        };
+        header.appendChild(langSpan);
+        header.appendChild(copyBtn);
+        const pre = document.createElement('pre');
+        const codeEl = document.createElement('code');
+        if (language) {
+            codeEl.className = `language-${language}`;
+        }
+        codeEl.textContent = code;
+        pre.appendChild(codeEl);
+        codeBlock.appendChild(header);
+        codeBlock.appendChild(pre);
+        wrapper.appendChild(codeBlock);
+        return wrapper;
     }
 
+    function delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function typeText(element, text) {
+        for (const char of text) {
+            element.textContent += char;
+            chatBox.scrollTop = chatBox.scrollHeight;
+            await delay(15);
+        }
+    }
+
+    async function renderResponse(responseText) {
+        const parts = responseText.split(/(```(?:\w+)?\n[\s\S]*?\n```)/g);
+        const codeRegex = /```(\w+)?\n([\s\S]*?)\n```/;
+
+        for (const part of parts) {
+            if (part.trim() === '') continue;
+
+            const codeMatch = part.match(codeRegex);
+            if (codeMatch) {
+                const language = codeMatch[1] || '';
+                const code = codeMatch[2].trim();
+                const codeBlockElement = createCodeBlockElement(language, code);
+                chatBox.appendChild(codeBlockElement);
+                hljs.highlightElement(codeBlockElement.querySelector('code'));
+            } else {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message ia-message';
+                const p = document.createElement('p');
+                messageDiv.appendChild(p);
+                chatBox.appendChild(messageDiv);
+                await typeText(p, part.trim());
+            }
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+    }
+    
     async function sendMessageToAI() {
         const userText = userInput.value.trim();
         if (userText === "") return;
@@ -242,8 +353,6 @@
         userInput.value = "";
         
         sendButton.disabled = true;
-
-        const aiMessageP = createAiMessage();
 
         try {
             const response = await fetch('/api/chat', {
@@ -255,22 +364,18 @@
             if (!response.ok) {
                 throw new Error(`Erro na rede: ${response.status}`);
             }
-
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
             
-            while (true) {
-                const { value, done } = await reader.read();
-                if (done) break;
-                
-                const chunk = decoder.decode(value);
-                aiMessageP.textContent += chunk;
-                chatBox.scrollTop = chatBox.scrollHeight;
-            }
+            const data = await response.json();
+            await renderResponse(data.reply);
 
         } catch (error) {
-            console.error('Erro ao chamar a API ou ler a stream:', error);
-            aiMessageP.textContent = 'Desculpe, algo deu errado. Tente novamente.';
+            console.error('Erro ao chamar a API:', error);
+            const p_error = document.createElement('p');
+            p_error.textContent = 'Desculpe, algo deu errado. Tente novamente.';
+            const div_error = document.createElement('div');
+            div_error.className = 'message ia-message';
+            div_error.appendChild(p_error);
+            chatBox.appendChild(div_error);
         } finally {
             sendButton.disabled = false;
         }
@@ -278,7 +383,7 @@
 
     sendButton.addEventListener('click', sendMessageToAI);
     userInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
+        if (e.key === 'Enter' && !sendButton.disabled) {
             sendMessageToAI();
         }
     });
