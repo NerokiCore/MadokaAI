@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MadokaAI</title>
-
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 
@@ -15,9 +15,9 @@
             --pink-dark: #C71585;
             --black-amoled: #000000;
             --white-soft: #f9f9f9;
-            --code-bg-light: #ffe7f0; /* Rosa bem claro para o código (claro) */
+            --code-bg-light: #ffe7f0;
             --code-border-light: var(--pink-primary);
-            --code-bg-dark: #1e1e1e; /* Cinza escuro para o código (escuro) */
+            --code-bg-dark: #1e1e1e;
             --code-border-dark: var(--pink-primary);
             --bg-body: var(--pink-light);
             --bg-chat: var(--white-soft);
@@ -55,11 +55,6 @@
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(15px); }
             to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes typing {
-            0% { opacity: 0.2; }
-            20% { opacity: 1; }
-            100% { opacity: 0.2; }
         }
         @keyframes copied {
             0% { transform: scale(1); }
@@ -271,6 +266,8 @@
     const sendButton = document.getElementById('send-button');
     const themeToggle = document.getElementById('theme-toggle');
     const htmlEl = document.documentElement;
+    
+    let conversationHistory = [];
 
     function applyTheme(theme) {
         if (theme === 'dark') {
@@ -348,19 +345,21 @@
     }
 
     async function renderResponse(responseText) {
-        const parts = responseText.split(/(?<=\n) *`{3}(?:\w+)?\n[\s\S]*?\n`{3}/g);
-        const codeRegex = /`{3}(\w+)?\n([\s\S]*?)\n`{3}/;
+        const parts = responseText.split(/(```(?:\w+)?\n[\s\S]*?\n```)/g);
+        const codeRegex = /```(\w+)?\n([\s\S]*?)\n```/;
 
         for (const part of parts) {
             if (part.trim() === '') continue;
 
             const codeMatch = part.match(codeRegex);
             if (codeMatch) {
-                const language = codeMatch()[1] || '';
-                const code = codeMatch()[2].trim();
+                const language = codeMatch[1] || '';
+                const code = codeMatch[2].trim();
                 const codeBlockElement = createCodeBlockElement(language, code);
                 chatBox.appendChild(codeBlockElement);
-                hljs.highlightElement(codeBlockElement.querySelector('code'));
+                if (window.hljs) {
+                    hljs.highlightElement(codeBlockElement.querySelector('code'));
+                }
             } else {
                 const messageDiv = document.createElement('div');
                 messageDiv.className = 'message ia-message';
@@ -372,8 +371,8 @@
             chatBox.scrollTop = chatBox.scrollHeight;
         }
     }
-
-    async function displayError(error) {
+    
+    function displayError(error) {
         const p_error = document.createElement('p');
         p_error.textContent = `Desculpe, algo deu errado. (Detalhe: ${error.message})`;
         const div_error = document.createElement('div');
@@ -395,20 +394,26 @@
             const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: userText })
+                body: JSON.stringify({
+                    message: userText,
+                    history: conversationHistory
+                })
             });
 
             if (!response.ok) {
                 throw new Error(`O servidor respondeu com status ${response.status}`);
             }
-
+            
             const data = await response.json();
-
+            
             if (!data.reply) {
                 throw new Error("A resposta do servidor não contém a chave 'reply'.");
             }
-
+            
             await renderResponse(data.reply);
+            
+            conversationHistory.push({ role: 'user', parts: [{ text: userText }] });
+            conversationHistory.push({ role: 'model', parts: [{ text: data.reply }] });
 
         } catch (error) {
             console.error('Erro detalhado:', error);
