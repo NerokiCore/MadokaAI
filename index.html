@@ -332,16 +332,20 @@
         return wrapper;
     }
 
+    function markdownToHtml(text) {
+        let html = text;
+        html = html.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+        html = html.replace(/\*(.*?)\*/g, '<i>$1</i>');
+        return html;
+    }
+
     function delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
     async function typeText(element, text) {
-        for (const char of text) {
-            element.textContent += char;
-            chatBox.scrollTop = chatBox.scrollHeight;
-            await delay(10);
-        }
+        const processedText = markdownToHtml(text);
+        element.innerHTML = processedText;
     }
 
     async function renderResponse(responseText) {
@@ -366,7 +370,9 @@
                 const p = document.createElement('p');
                 messageDiv.appendChild(p);
                 chatBox.appendChild(messageDiv);
-                await typeText(p, part.trim());
+                
+                const htmlContent = markdownToHtml(part.trim());
+                p.innerHTML = htmlContent;
             }
             chatBox.scrollTop = chatBox.scrollHeight;
         }
@@ -390,6 +396,8 @@
         userInput.value = "";
         sendButton.disabled = true;
 
+        conversationHistory.push({ role: 'user', parts: [{ text: userText }] });
+
         try {
             const response = await fetch('/api/chat', {
                 method: 'POST',
@@ -412,12 +420,12 @@
             
             await renderResponse(data.reply);
             
-            conversationHistory.push({ role: 'user', parts: [{ text: userText }] });
             conversationHistory.push({ role: 'model', parts: [{ text: data.reply }] });
 
         } catch (error) {
             console.error('Erro detalhado:', error);
             displayError(error);
+            conversationHistory.pop();
         } finally {
             sendButton.disabled = false;
         }
@@ -425,7 +433,7 @@
 
     sendButton.addEventListener('click', sendMessageToAI);
     userInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
+        if (e.key === 'Enter' && !sendButton.disabled) {
             sendMessageToAI();
         }
     });
