@@ -80,6 +80,7 @@
             -moz-osx-font-smoothing: grayscale;
             overflow: hidden;
             position: relative;
+            transition: background 1s ease-in-out;
         }
         #chat-container {
             width: 100%;
@@ -250,6 +251,8 @@
             background-color: rgba(0,0,0,0.2);
             padding: 4px;
             border-radius: 20px;
+            width: 62px;
+            height: 32px;
             position: relative;
         }
         .theme-switch-slider {
@@ -257,19 +260,21 @@
             width: 24px;
             height: 24px;
             border-radius: 50%;
+            position: absolute;
+            left: 4px;
             transition: transform 0.4s ease;
         }
         #theme-toggle-checkbox {
             display: none;
         }
-        #theme-toggle-checkbox:checked + .theme-switch-slider {
+        #theme-toggle-checkbox:checked ~ .theme-switch-slider {
             transform: translateX(30px);
         }
         .theme-switch-icons {
             display: flex;
-            position: absolute;
             width: 100%;
-            justify-content: space-around;
+            justify-content: space-between;
+            padding: 0 4px;
             color: white;
             font-size: 14px;
         }
@@ -299,7 +304,7 @@
                 300px 90px #FFF, 380px 120px #FFF, 450px 60px #FFF, 550px 140px #FFF,
                 650px 20px #FFF, 70vw 30vh #FFF, 80vw 80vh #FFF, 10vw 40vh #FFF,
                 25vw 50vh #FFF, 90vw 10vh #FFF, 40vw 70vh #FFF, 60vw 60vh #FFF;
-            border-radius: 50%; /* Faz as estrelas serem pontos */
+            border-radius: 50%;
             opacity: 0;
             transform: scale(0.5);
         }
@@ -406,43 +411,35 @@
     }
 
     function markdownToHtml(text) {
-        let html = text;
-        html = html.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
-        html = html.replace(/\*(.*?)\*/g, '<i>$1</i>');
+        let processedText = text.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\*(.*?)\*/g, '<i>$1</i>');
         
-        const lines = html.split('\n');
+        const lines = processedText.split('\n');
         let inList = false;
-        html = lines.map(line => {
-            if (line.trim().startsWith('* ')) {
-                const listItem = `<li>${line.trim().substring(2)}</li>`;
+        let html = '';
+
+        lines.forEach((line, index) => {
+            const isListItem = line.trim().startsWith('* ');
+            if (isListItem) {
+                const listItemContent = line.trim().substring(2);
                 if (!inList) {
                     inList = true;
-                    return `<ul>${listItem}`;
+                    html += '<ul>';
                 }
-                return listItem;
+                html += `<li>${listItemContent}</li>`;
             } else {
                 if (inList) {
                     inList = false;
-                    return `</ul>${line}`;
+                    html += '</ul>';
                 }
-                return line;
+                html += line + '\n';
             }
-        }).join('\n');
+        });
 
         if (inList) {
             html += '</ul>';
         }
-
+        
         return html;
-    }
-
-    function delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
-    async function typeText(element, text) {
-        const processedText = markdownToHtml(text);
-        element.innerHTML = processedText;
     }
 
     async function renderResponse(responseText) {
@@ -465,11 +462,10 @@
                 const messageDiv = document.createElement('div');
                 messageDiv.className = 'message ia-message';
                 const p = document.createElement('p');
+                const htmlContent = markdownToHtml(part.trim()).replace(/\n/g, '<br>');
+                p.innerHTML = htmlContent;
                 messageDiv.appendChild(p);
                 chatBox.appendChild(messageDiv);
-                
-                const htmlContent = markdownToHtml(part.trim());
-                p.innerHTML = htmlContent;
             }
             chatBox.scrollTop = chatBox.scrollHeight;
         }
