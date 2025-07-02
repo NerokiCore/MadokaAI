@@ -58,11 +58,11 @@ export default async function handler(req, res) {
     const mainMessages = [
         {
             role: "system",
-            content: "Você é MadokaAI, uma assistente gente boa, fofa e amigável, inspirada em Madoka Magica. Converse naturalmente. Se um contexto de busca for fornecido, use-o como sua principal fonte de verdade para responder à pergunta do usuário. Se o contexto for nulo ou não ajudar, use seu conhecimento geral. Se não souber, admita que não sabe. Ignore artefatos como `![1]`."
+            content: "Você é MadokaAI, uma assistente gente boa, fofa e amigável, inspirada em Madoka Magica. Converse naturalmente. Se um contexto de busca for fornecido, use-o como sua única fonte de verdade para responder à pergunta do usuário, ignorando o histórico de chat para evitar confusão. Se o contexto for nulo ou não ajudar, use o histórico e seu conhecimento geral para conversar. Ignore artefatos como `![1]`."
         }
     ];
 
-    if (history) {
+    if (!searchResults && history) {
         history.forEach(item => {
             mainMessages.push({ role: item.role === 'model' ? 'assistant' : item.role, content: item.parts[0].text });
         });
@@ -70,7 +70,7 @@ export default async function handler(req, res) {
 
     let finalPrompt = message;
     if (searchResults) {
-        finalPrompt = `Contexto da minha pesquisa na internet: "${searchResults}"\n\nPergunta do usuário: "${message}"`;
+        finalPrompt = `Contexto da minha pesquisa na internet: "${searchResults}"\n\nBaseado SOMENTE no contexto acima, responda à pergunta do usuário: "${message}"`;
     }
     mainMessages.push({ role: "user", content: finalPrompt });
     
@@ -82,8 +82,4 @@ export default async function handler(req, res) {
     const reply = chatCompletion.choices[0]?.message?.content || "Desculpe, não consegui pensar em uma resposta.";
     res.status(200).json({ reply: reply });
 
-  } catch (error) {
-    console.error('Erro na API da Groq:', error);
-    res.status(500).json({ error: 'Falha ao se comunicar com a IA.' });
-  }
-}
+  } catch (error)
