@@ -39,20 +39,26 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Nenhuma mensagem fornecida.' });
     }
 
-    const searchResults = await searchGoogle(message);
+    let searchQuery = message;
+    if (history && history.length > 0) {
+        const context = history.slice(-4).map(h => h.parts[0].text).join(' ');
+        searchQuery = context + ' ' + message;
+    }
 
-    const augmentedPrompt = `Com base nestas informações da internet: "${searchResults}". Responda à seguinte pergunta do usuário de forma amigável e direta: "${message}"`;
+    const searchResults = await searchGoogle(searchQuery);
+
+    const augmentedPrompt = `Com base **apenas** nestas informações recentes da internet: "${searchResults}". Ignore seu conhecimento prévio se ele conflitar com estas informações. Responda à pergunta do usuário de forma precisa: "${message}"`;
 
     const messages = [
         {
             role: "system",
-            content: "Você é MadokaAI, uma assistente prestativa e amigável. Use as informações da internet fornecidas no início do prompt para basear suas respostas factuais. Se a informação não estiver nos dados da busca ou se a pergunta for de opinião, responda normalmente. Seja sempre concisa."
+            content: "Você é MadokaAI, uma assistente factual. Sua principal função é responder com base nas informações de busca fornecidas no prompt do usuário. Você deve priorizar totalmente essas informações. Se a informação não estiver nos dados da busca, afirme que não encontrou detalhes sobre isso na sua pesquisa recente. Não invente informações."
         }
     ];
 
     if (history) {
         history.forEach(item => {
-            if (item.role === 'user' || item.role === 'assistant') {
+            if ((item.role === 'user' || item.role === 'assistant') && item.parts[0].text) {
                 messages.push({ role: item.role, content: item.parts[0].text });
             }
         });
