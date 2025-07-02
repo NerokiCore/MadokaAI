@@ -11,17 +11,12 @@ async function searchGoogle(query) {
 
   try {
     const response = await fetch(url);
-    if (!response.ok) {
-      return `(Ocorreu um erro na busca: Status ${response.status})`;
-    }
+    if (!response.ok) { return null; }
     const data = await response.json();
-    if (!data.items || data.items.length === 0) {
-        return "(Não encontrei resultados na internet para essa pergunta.)";
-    }
-    const snippets = data.items.map(item => item.snippet).slice(0, 4).join(" ");
-    return snippets.replace(/\n/g, ' ');
+    if (!data.items || data.items.length === 0) { return null; }
+    return data.items.map(item => item.snippet).slice(0, 4).join(" ").replace(/\n/g, ' ');
   } catch (error) {
-    return `(Não foi possível conectar à API de busca: ${error.message})`;
+    return null;
   }
 }
 
@@ -37,12 +32,10 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Nenhuma mensagem fornecida.' });
     }
 
-    const searchResults = await searchGoogle(message);
-
     const messages = [
         {
             role: "system",
-            content: "Você é MadokaAI, uma assistente amigável e conversacional. Seu processo para responder é: 1. Olhe o histórico da conversa para entender o contexto. 2. Olhe os resultados da busca na internet que foram fornecidos sobre a pergunta mais recente. 3. Use o histórico E os resultados da busca para formular a melhor e mais natural resposta possível. Se os resultados da busca contradizem seu conhecimento, confie nos resultados da busca. Se a busca não retornar nada útil, use seu conhecimento geral, mas avise que a informação pode não ser recente. Responda sempre de forma direta."
+            content: "Você é MadokaAI. Seja uma assistente amigável, fofa e um pouco mágica, inspirada em Madoka Magica. Converse de forma natural e direta. Se o usuário fizer uma pergunta que precise de fatos ou dados recentes, um contexto de busca será fornecido. Use-o para formular sua resposta. Se o contexto de busca não for útil ou não for fornecido, use seu conhecimento geral."
         }
     ];
 
@@ -54,8 +47,21 @@ export default async function handler(req, res) {
         });
     }
 
-    const augmentedPrompt = `(Resultados da pesquisa na internet sobre sua pergunta: "${searchResults}")\n\nSua pergunta: "${message}"`;
-    messages.push({ role: "user", content: augmentedPrompt });
+    let finalMessage = message;
+    const questionWords = ['quem', 'qual', 'onde', 'quando', 'como', 'por que', 'o que', 'defina', 'me fale', 'conte sobre'];
+    const shouldSearch = message.length > 15 || questionWords.some(word => message.toLowerCase().includes(word));
+
+    if (shouldSearch) {
+        const searchResults = await searchGoogle(message);
+        if (searchResults) {
+            finalMessage = `Contexto da minha pesquisa na internet: "${searchResults}"\n\nPergunta do usuário: "${message}"`;
+        }
+    }
+
+    messages.push({
+        role: "user",
+        content: finalMessage
+    });
     
     const chatCompletion = await groq.chat.completions.create({
         messages: messages,
