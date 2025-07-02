@@ -170,13 +170,35 @@
             animation: fadeIn 0.3s;
         }
         #input-area {
-            padding: 20px 25px;
+            padding: 15px;
             border-top: 1px solid var(--border-color);
             display: flex;
             align-items: center;
             gap: 10px;
             background-color: var(--bg-chat);
             flex-shrink: 0;
+        }
+        #search-toggle {
+            background: transparent;
+            border: 2px solid var(--border-color);
+            color: var(--text-primary);
+            opacity: 0.6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.3s ease;
+        }
+        #search-toggle.active {
+            opacity: 1;
+            border-color: var(--pink-primary);
+            color: var(--pink-primary);
+            box-shadow: 0 0 10px var(--pink-primary);
         }
         #user-input {
             flex-grow: 1;
@@ -204,9 +226,6 @@
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-        }
-        #send-button:hover {
-            filter: brightness(1.1);
         }
         .code-block-wrapper {
             width: 100%;
@@ -239,12 +258,6 @@
             font-size: 12px;
             transition: background-color 0.2s, transform 0.1s ease-in-out;
         }
-        .copy-btn:hover {
-            filter: brightness(1.1);
-        }
-        .copy-btn:active {
-            transform: scale(0.95);
-        }
         .copied-animation {
             animation: copied 0.5s ease-in-out;
         }
@@ -253,12 +266,6 @@
             padding: 15px;
             overflow-x: auto;
         }
-        .code-block code {
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 14px;
-            color: var(--text-primary);
-        }
-
         .theme-switch-container {
             display: flex;
             align-items: center;
@@ -352,10 +359,11 @@
     </header>
     <main id="chat-box">
         <div class="message ia-message">
-            <p>Olá! Como posso te ajudar hoje?</p>
+            <p>Olá! Use o botão 🌐 para ativar ou desativar a busca na internet.</p>
         </div>
     </main>
     <footer id="input-area">
+        <button id="search-toggle" title="Ativar/Desativar busca na internet">🌐</button>
         <input type="text" id="user-input" placeholder="Converse com a MadokaAI...">
         <button id="send-button">→</button>
     </footer>
@@ -366,9 +374,11 @@
     const userInput = document.getElementById('user-input');
     const sendButton = document.getElementById('send-button');
     const themeCheckbox = document.getElementById('theme-toggle-checkbox');
+    const searchToggle = document.getElementById('search-toggle');
     const htmlEl = document.documentElement;
     
     let conversationHistory = [];
+    let isSearchEnabled = false;
 
     function applyTheme(theme, isInitial) {
         if (theme === 'dark') {
@@ -387,6 +397,11 @@
         applyTheme(newTheme, false);
         localStorage.setItem('theme', newTheme);
     });
+    
+    searchToggle.addEventListener('click', () => {
+        isSearchEnabled = !isSearchEnabled;
+        searchToggle.classList.toggle('active', isSearchEnabled);
+    });
 
     function addUserMessage(text) {
         const messageDiv = document.createElement('div');
@@ -398,11 +413,11 @@
         chatBox.scrollTop = chatBox.scrollHeight;
     }
     
-    function createStatusMessage() {
+    function createStatusMessage(text) {
         const statusDiv = document.createElement('div');
         statusDiv.id = 'status-message';
         statusDiv.className = 'status-message';
-        statusDiv.textContent = 'Buscando na internet... 🪄';
+        statusDiv.textContent = text;
         chatBox.appendChild(statusDiv);
         chatBox.scrollTop = chatBox.scrollHeight;
         return statusDiv;
@@ -453,12 +468,10 @@
 
     function markdownToHtml(text) {
         let processedText = text.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\*(.*?)\*/g, '<i>$1</i>');
-        
         const lines = processedText.split('\n');
         let inList = false;
         let html = '';
-
-        lines.forEach((line, index) => {
+        lines.forEach((line) => {
             const isListItem = line.trim().startsWith('* ');
             if (isListItem) {
                 const listItemContent = line.trim().substring(2);
@@ -475,21 +488,15 @@
                 html += line + '\n';
             }
         });
-
-        if (inList) {
-            html += '</ul>';
-        }
-        
+        if (inList) { html += '</ul>'; }
         return html;
     }
 
     async function renderResponse(responseText) {
         const parts = responseText.split(/(```(?:\w+)?\n[\s\S]*?\n```)/g);
         const codeRegex = /```(\w+)?\n([\s\S]*?)\n```/;
-
         for (const part of parts) {
             if (part.trim() === '') continue;
-
             const codeMatch = part.match(codeRegex);
             if (codeMatch) {
                 const language = codeMatch[1] || '';
@@ -525,43 +532,37 @@
     async function sendMessageToAI() {
         const userText = userInput.value.trim();
         if (userText === "" || sendButton.disabled) return;
-
         addUserMessage(userText);
         userInput.value = "";
         sendButton.disabled = true;
-        
-        let statusMessage = createStatusMessage();
-
+        let statusMessage;
+        if (isSearchEnabled) {
+            statusMessage = createStatusMessage('Buscando na internet... 🪄');
+        } else {
+            statusMessage = createStatusMessage('Pensando... 💭');
+        }
         const currentHistory = conversationHistory.map(item => ({ role: item.role, parts: item.parts }));
-
         conversationHistory.push({ role: 'user', parts: [{ text: userText }] });
-
         try {
             const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     message: userText,
-                    history: currentHistory
+                    history: currentHistory,
+                    useSearch: isSearchEnabled
                 })
             });
-
             removeStatusMessage();
-
             if (!response.ok) {
                 throw new Error(`O servidor respondeu com status ${response.status}`);
             }
-            
             const data = await response.json();
-            
             if (!data.reply) {
                 throw new Error("A resposta do servidor não contém a chave 'reply'.");
             }
-            
             await renderResponse(data.reply);
-            
             conversationHistory.push({ role: 'model', parts: [{ text: data.reply }] });
-
         } catch (error) {
             removeStatusMessage();
             console.error('Erro detalhado:', error);
