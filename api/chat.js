@@ -12,18 +12,16 @@ async function searchGoogle(query) {
   try {
     const response = await fetch(url);
     if (!response.ok) {
-      console.error("Erro na busca do Google:", response.statusText);
-      return "Ocorreu um erro ao tentar pesquisar na internet.";
+      return `(Ocorreu um erro na busca: Status ${response.status})`;
     }
     const data = await response.json();
     if (!data.items || data.items.length === 0) {
-        return "Não encontrei resultados na internet para essa pergunta.";
+        return "(Não encontrei resultados na internet para essa pergunta.)";
     }
-    const snippets = data.items.map(item => item.snippet).slice(0, 5).join(" ");
+    const snippets = data.items.map(item => item.snippet).slice(0, 4).join(" ");
     return snippets.replace(/\n/g, ' ');
   } catch (error) {
-    console.error("Erro ao fazer fetch para o Google Search:", error);
-    return "Não foi possível conectar à API de busca.";
+    return `(Não foi possível conectar à API de busca: ${error.message})`;
   }
 }
 
@@ -39,27 +37,26 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Nenhuma mensagem fornecida.' });
     }
 
-    let searchQuery = message;
-    if (history && history.length > 0) {
-        const context = history.slice(-4).map(h => h.parts[0].text).join(' ');
-        searchQuery = context + ' ' + message;
-    }
+    const searchResults = await searchGoogle(message);
 
-    const searchResults = await searchGoogle(searchQuery);
-
-    const augmentedPrompt = `Com base **apenas** nestas informações recentes da internet: "${searchResults}". Ignore seu conhecimento prévio se ele conflitar com estas informações. Responda à pergunta do usuário de forma precisa: "${message}"`;
+    const augmentedPrompt = `Com base no contexto da conversa e nestas informações de uma busca na internet: "${searchResults}". Responda à pergunta do usuário: "${message}"`;
 
     const messages = [
         {
             role: "system",
-            content: "Você é MadokaAI, uma assistente factual. Sua principal função é responder com base nas informações de busca fornecidas no prompt do usuário. Você deve priorizar totalmente essas informações. Se a informação não estiver nos dados da busca, afirme que não encontrou detalhes sobre isso na sua pesquisa recente. Não invente informações."
+            content: "Você é MadokaAI, uma assistente gente boa e amigável. Converse naturalmente. Para perguntas factuais, use as informações de busca fornecidas no prompt para dar uma resposta precisa. Se a busca não ajudar, use seu conhecimento geral, mas se não tiver certeza, admita que não sabe a resposta."
         }
     ];
 
     if (history) {
         history.forEach(item => {
             if ((item.role === 'user' || item.role === 'assistant') && item.parts[0].text) {
-                messages.push({ role: item.role, content: item.parts[0].text });
+                // Apenas adicionamos o histórico real, sem o prompt aumentado
+                if (item.role === 'user') {
+                    messages.push({ role: 'user', content: item.parts[0].text });
+                } else if (item.role === 'assistant') {
+                    messages.push({ role: 'assistant', content: item.parts[0].text });
+                }
             }
         });
     }
