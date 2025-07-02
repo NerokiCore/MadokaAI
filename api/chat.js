@@ -11,12 +11,13 @@ async function searchGoogle(query) {
 
   try {
     const response = await fetch(url);
-    if (!response.ok) { return null; }
+    if (!response.ok) { return `(Ocorreu um erro na busca: Status ${response.status})`; }
     const data = await response.json();
-    if (!data.items || data.items.length === 0) { return null; }
-    return data.items.map(item => item.snippet).slice(0, 4).join(" ").replace(/\n/g, ' ');
+    if (!data.items || data.items.length === 0) { return "(Não encontrei resultados na internet para essa pergunta.)"; }
+    const snippets = data.items.map(item => `Fonte: ${item.snippet}`).slice(0, 5).join(" | ");
+    return snippets.replace(/\n/g, ' ');
   } catch (error) {
-    return null;
+    return `(Não foi possível conectar à API de busca: ${error.message})`;
   }
 }
 
@@ -32,10 +33,12 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Nenhuma mensagem fornecida.' });
     }
 
+    const searchResults = await searchGoogle(message);
+
     const messages = [
         {
             role: "system",
-            content: "Você é MadokaAI. Seja uma assistente amigável, fofa e um pouco mágica, inspirada em Madoka Magica. Converse de forma natural e direta. Se o usuário fizer uma pergunta que precise de fatos ou dados recentes, um contexto de busca será fornecido. Use-o para formular sua resposta. Se o contexto de busca não for útil ou não for fornecido, use seu conhecimento geral."
+            content: "Você é MadokaAI, uma assistente de pesquisa e analista de informações. Seu trabalho é analisar criticamente o contexto de busca fornecido e o histórico da conversa para responder à pergunta do usuário. Seu processo é: 1. Analise os trechos de busca fornecidos, que são separados por '|'. 2. Identifique a informação mais consistente e confiável entre as fontes. Se as fontes conflitarem, aponte a inconsistência. 3. Formule uma resposta concisa e precisa baseada na informação de maior consenso. 4. Ignore e não reproduza artefatos como '![1]' ou '...'. 5. Converse de forma amigável e natural, não como um robô. Se a busca não retornar informações úteis, use seu conhecimento geral, mas admita que a informação pode não ser recente."
         }
     ];
 
@@ -47,21 +50,8 @@ export default async function handler(req, res) {
         });
     }
 
-    let finalMessage = message;
-    const questionWords = ['quem', 'qual', 'onde', 'quando', 'como', 'por que', 'o que', 'defina', 'me fale', 'conte sobre'];
-    const shouldSearch = message.length > 15 || questionWords.some(word => message.toLowerCase().includes(word));
-
-    if (shouldSearch) {
-        const searchResults = await searchGoogle(message);
-        if (searchResults) {
-            finalMessage = `Contexto da minha pesquisa na internet: "${searchResults}"\n\nPergunta do usuário: "${message}"`;
-        }
-    }
-
-    messages.push({
-        role: "user",
-        content: finalMessage
-    });
+    const augmentedPrompt = `Contexto da minha pesquisa na internet: "${searchResults}"\n\nBaseado na análise crítica acima, responda à minha pergunta: "${message}"`;
+    messages.push({ role: "user", content: augmentedPrompt });
     
     const chatCompletion = await groq.chat.completions.create({
         messages: messages,
