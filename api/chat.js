@@ -42,7 +42,7 @@ export default async function handler(req, res) {
     const augmentedPrompt = `Com base nestas informações da internet: "${searchResults}". Responda à seguinte pergunta do usuário de forma amigável e direta: "${message}"`;
     
     const model = genAI.getGenerativeModel({ 
-        model: "gemini-1.5-flash-latest",
+        model: "gemini-1.0-pro",
         systemInstruction: "Você é MadokaAI, uma assistente prestativa e amigável. Use as informações da internet fornecidas para basear suas respostas factuais. Se a informação não estiver nos dados da busca ou se a pergunta for de opinião, responda normalmente. Seja sempre amigável.",
     });
     
