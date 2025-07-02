@@ -12,14 +12,16 @@
         :root {
             --pink-light: #FFF0F5;
             --pink-primary: #FF69B4;
-            --pink-dark: #C71585;
+            --sky-light: #87CEEB;
+            --sky-dark: #2c3e50;
             --black-amoled: #000000;
             --white-soft: #f9f9f9;
             --code-bg-light: #ffe7f0;
             --code-border-light: var(--pink-primary);
             --code-bg-dark: #1e1e1e;
             --code-border-dark: var(--pink-primary);
-            --bg-body: var(--pink-light);
+            --bg-body-start: var(--sky-light);
+            --bg-body-end: var(--pink-light);
             --bg-chat: var(--white-soft);
             --header-bg: var(--pink-primary);
             --header-text: var(--white-soft);
@@ -36,7 +38,8 @@
             --copy-btn-text: #eee;
         }
         html.dark-theme {
-            --bg-body: var(--black-amoled);
+            --bg-body-start: var(--sky-dark);
+            --bg-body-end: var(--black-amoled);
             --bg-chat: #121212;
             --header-bg: var(--pink-primary);
             --header-text: var(--white-soft);
@@ -63,18 +66,20 @@
         }
         * {
             box-sizing: border-box;
-            transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease;
+            transition: background-color 0.5s ease, color 0.5s ease, border-color 0.5s ease;
         }
         body {
             font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
             margin: 0;
-            background-color: var(--bg-body);
+            background: linear-gradient(180deg, var(--bg-body-start), var(--bg-body-end));
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+            overflow: hidden;
+            position: relative;
         }
         #chat-container {
             width: 100%;
@@ -87,6 +92,7 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            z-index: 10;
         }
         #chat-header {
             background: var(--header-bg);
@@ -102,13 +108,6 @@
             font-size: 20px;
             font-weight: 600;
         }
-        #theme-toggle {
-            background: none;
-            border: none;
-            color: var(--header-text);
-            font-size: 24px;
-            cursor: pointer;
-        }
         #chat-box {
             flex-grow: 1;
             padding: 25px;
@@ -123,19 +122,22 @@
             animation: fadeIn 0.5s ease-out;
             flex-direction: column;
         }
-        .message p {
+        .message p, .message ul {
             padding: 12px 18px;
             border-radius: 22px;
             margin: 0;
-            line-height: 1.5;
+            line-height: 1.6;
             word-wrap: break-word;
             width: fit-content;
+        }
+        .message ul {
+            padding-left: 40px;
         }
         .ia-message {
             align-self: flex-start;
             align-items: flex-start;
         }
-        .ia-message p {
+        .ia-message p, .ia-message ul {
             background-color: var(--ia-bubble-bg);
             color: var(--text-primary);
             border-bottom-left-radius: 5px;
@@ -149,7 +151,7 @@
             background: var(--user-bubble-bg);
             color: var(--user-bubble-text);
             border-bottom-right-radius: 5px;
-            max-width: 75%;
+            max-width: 85%;
         }
         #input-area {
             padding: 20px 25px;
@@ -240,14 +242,84 @@
             font-size: 14px;
             color: var(--text-primary);
         }
+
+        .theme-switch-container {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            background-color: rgba(0,0,0,0.2);
+            padding: 4px;
+            border-radius: 20px;
+            position: relative;
+        }
+        .theme-switch-slider {
+            background-color: var(--white-soft);
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            transition: transform 0.4s ease;
+        }
+        #theme-toggle-checkbox {
+            display: none;
+        }
+        #theme-toggle-checkbox:checked + .theme-switch-slider {
+            transform: translateX(30px);
+        }
+        .theme-switch-icons {
+            display: flex;
+            position: absolute;
+            width: 100%;
+            justify-content: space-around;
+            color: white;
+            font-size: 14px;
+        }
+        .sun, .stars {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 1;
+            transition: opacity 1s ease-in-out;
+        }
+        .sun {
+            background-color: #FFD700;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            top: 15%;
+            left: 15%;
+            box-shadow: 0 0 20px 10px #FFD700;
+            opacity: 1;
+        }
+        .stars {
+            background: transparent;
+            box-shadow: 
+                50px 30px #FFF, 100px 80px #FFF, 200px 40px #FFF, 250px 150px #FFF, 
+                300px 90px #FFF, 380px 120px #FFF, 450px 60px #FFF, 550px 140px #FFF,
+                650px 20px #FFF, 70vw 30vh #FFF, 80vw 80vh #FFF, 10vw 40vh #FFF,
+                25vw 50vh #FFF, 90vw 10vh #FFF, 40vw 70vh #FFF, 60vw 60vh #FFF;
+            border-radius: 50%; /* Faz as estrelas serem pontos */
+            opacity: 0;
+            transform: scale(0.5);
+        }
+        html.dark-theme .sun { opacity: 0; }
+        html.dark-theme .stars { opacity: 1; }
     </style>
 </head>
 <body>
 
+<div class="sun"></div>
+<div class="stars"></div>
+
 <div id="chat-container">
     <header id="chat-header">
         <h1>MadokaAI</h1>
-        <button id="theme-toggle">🌙</button>
+        <label class="theme-switch-container">
+            <input type="checkbox" id="theme-toggle-checkbox">
+            <div class="theme-switch-icons"><span>☀️</span><span>🌙</span></div>
+            <div class="theme-switch-slider"></div>
+        </label>
     </header>
     <main id="chat-box">
         <div class="message ia-message">
@@ -264,25 +336,26 @@
     const chatBox = document.getElementById('chat-box');
     const userInput = document.getElementById('user-input');
     const sendButton = document.getElementById('send-button');
-    const themeToggle = document.getElementById('theme-toggle');
+    const themeCheckbox = document.getElementById('theme-toggle-checkbox');
     const htmlEl = document.documentElement;
     
     let conversationHistory = [];
 
-    function applyTheme(theme) {
+    function applyTheme(theme, isInitial) {
         if (theme === 'dark') {
             htmlEl.classList.add('dark-theme');
-            themeToggle.textContent = '☀️';
+            if (isInitial) themeCheckbox.checked = true;
         } else {
             htmlEl.classList.remove('dark-theme');
-            themeToggle.textContent = '🌙';
+            if (isInitial) themeCheckbox.checked = false;
         }
     }
     const savedTheme = localStorage.getItem('theme') || 'light';
-    applyTheme(savedTheme);
-    themeToggle.addEventListener('click', () => {
-        const newTheme = htmlEl.classList.contains('dark-theme') ? 'light' : 'dark';
-        applyTheme(newTheme);
+    applyTheme(savedTheme, true);
+    
+    themeCheckbox.addEventListener('change', () => {
+        const newTheme = themeCheckbox.checked ? 'dark' : 'light';
+        applyTheme(newTheme, false);
         localStorage.setItem('theme', newTheme);
     });
 
@@ -307,7 +380,7 @@
         langSpan.textContent = language || 'código';
         const copyBtn = document.createElement('button');
         copyBtn.className = 'copy-btn';
-        copyBtn.textContent = 'Copiar';
+        copyBtn.innerHTML = 'Copiar';
         copyBtn.addEventListener('click', () => {
             navigator.clipboard.writeText(code);
             copyBtn.textContent = 'Copiado!';
@@ -336,6 +409,30 @@
         let html = text;
         html = html.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
         html = html.replace(/\*(.*?)\*/g, '<i>$1</i>');
+        
+        const lines = html.split('\n');
+        let inList = false;
+        html = lines.map(line => {
+            if (line.trim().startsWith('* ')) {
+                const listItem = `<li>${line.trim().substring(2)}</li>`;
+                if (!inList) {
+                    inList = true;
+                    return `<ul>${listItem}`;
+                }
+                return listItem;
+            } else {
+                if (inList) {
+                    inList = false;
+                    return `</ul>${line}`;
+                }
+                return line;
+            }
+        }).join('\n');
+
+        if (inList) {
+            html += '</ul>';
+        }
+
         return html;
     }
 
