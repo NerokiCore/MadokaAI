@@ -4,7 +4,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 async function searchGoogle(query) {
   const SEARCH_API_KEY = process.env.Google Search_API_KEY;
-  const SEARCH_ENGINE_ID = process.env.Google Search_Engine_ID;
+  const SEARCH_ENGINE_ID = process.env.Google Search_ENGINE_ID;
   const url = `https://www.googleapis.com/customsearch/v1?key=${SEARCH_API_KEY}&cx=${SEARCH_ENGINE_ID}&q=${encodeURIComponent(query)}`;
 
   try {
