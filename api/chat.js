@@ -17,12 +17,11 @@ async function generateSearchQuery(message, history) {
     try {
         const chatCompletion = await groq.chat.completions.create({
             messages: queryGenMessages,
-            model: "llama3-8b-8192",
+            model: "llama3-8b-8192", // Usamos o modelo rápido para esta tarefa simples
         });
         const result = chatCompletion.choices[0]?.message?.content.trim();
         return result === 'NO_SEARCH' ? null : result;
     } catch (error) {
-        console.error("Erro ao gerar a query de busca:", error);
         return null; 
     }
 }
@@ -79,7 +78,7 @@ export default async function handler(req, res) {
     
     const chatCompletion = await groq.chat.completions.create({
         messages: mainMessages,
-        model: "llama3-8b-8192",
+        model: "llama3-70b-8192", // AQUI ESTÁ O UPGRADE
     });
 
     const reply = chatCompletion.choices[0]?.message?.content || "Desculpe, não consegui pensar em uma resposta.";
@@ -89,4 +88,4 @@ export default async function handler(req, res) {
     console.error('Erro fatal no handler da API:', error);
     res.status(500).json({ error: 'Ocorreu um erro crítico no servidor.' });
   }
-}
+};
