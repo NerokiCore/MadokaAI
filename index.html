@@ -161,6 +161,14 @@
             border-bottom-right-radius: 5px;
             max-width: 85%;
         }
+        .status-message {
+            align-self: center;
+            font-size: 12px;
+            color: var(--text-primary);
+            opacity: 0.7;
+            padding: 5px 0;
+            animation: fadeIn 0.3s;
+        }
         #input-area {
             padding: 20px 25px;
             border-top: 1px solid var(--border-color);
@@ -389,6 +397,23 @@
         chatBox.appendChild(messageDiv);
         chatBox.scrollTop = chatBox.scrollHeight;
     }
+    
+    function createStatusMessage() {
+        const statusDiv = document.createElement('div');
+        statusDiv.id = 'status-message';
+        statusDiv.className = 'status-message';
+        statusDiv.textContent = 'Buscando na internet... 🪄';
+        chatBox.appendChild(statusDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+        return statusDiv;
+    }
+    
+    function removeStatusMessage() {
+        const statusDiv = document.getElementById('status-message');
+        if(statusDiv) {
+            statusDiv.remove();
+        }
+    }
 
     function createCodeBlockElement(language, code) {
         const wrapper = document.createElement('div');
@@ -504,6 +529,10 @@
         addUserMessage(userText);
         userInput.value = "";
         sendButton.disabled = true;
+        
+        let statusMessage = createStatusMessage();
+
+        const currentHistory = conversationHistory.map(item => ({ role: item.role, parts: item.parts }));
 
         conversationHistory.push({ role: 'user', parts: [{ text: userText }] });
 
@@ -513,9 +542,11 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     message: userText,
-                    history: conversationHistory
+                    history: currentHistory
                 })
             });
+
+            removeStatusMessage();
 
             if (!response.ok) {
                 throw new Error(`O servidor respondeu com status ${response.status}`);
@@ -532,6 +563,7 @@
             conversationHistory.push({ role: 'model', parts: [{ text: data.reply }] });
 
         } catch (error) {
+            removeStatusMessage();
             console.error('Erro detalhado:', error);
             displayError(error);
             conversationHistory.pop();
