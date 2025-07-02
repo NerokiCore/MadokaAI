@@ -17,7 +17,7 @@ async function generateSearchQuery(message, history) {
     try {
         const chatCompletion = await groq.chat.completions.create({
             messages: queryGenMessages,
-            model: "llama3-8b-8192", // Usamos o modelo rápido para esta tarefa simples
+            model: "llama3-8b-8192",
         });
         const result = chatCompletion.choices[0]?.message?.content.trim();
         return result === 'NO_SEARCH' ? null : result;
@@ -49,11 +49,14 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { message, history } = req.body;
+    const { message, history, useSearch } = req.body;
     if (!message) { return res.status(400).json({ error: 'Nenhuma mensagem fornecida.' }); }
 
-    const smartSearchQuery = await generateSearchQuery(message, history || []);
-    const searchResults = await searchGoogle(smartSearchQuery);
+    let searchResults = null;
+    if (useSearch) {
+        const smartSearchQuery = await generateSearchQuery(message, history || []);
+        searchResults = await searchGoogle(smartSearchQuery);
+    }
 
     const mainMessages = [
         {
@@ -78,7 +81,7 @@ export default async function handler(req, res) {
     
     const chatCompletion = await groq.chat.completions.create({
         messages: mainMessages,
-        model: "llama3-70b-8192", // AQUI ESTÁ O UPGRADE
+        model: "llama3-70b-8192",
     });
 
     const reply = chatCompletion.choices[0]?.message?.content || "Desculpe, não consegui pensar em uma resposta.";
