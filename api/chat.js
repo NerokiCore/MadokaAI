@@ -22,6 +22,7 @@ async function generateSearchQuery(message, history) {
         const result = chatCompletion.choices[0]?.message?.content.trim();
         return result === 'NO_SEARCH' ? null : result;
     } catch (error) {
+        console.error("Erro ao gerar a query de busca:", error);
         return null; 
     }
 }
@@ -58,19 +59,21 @@ export default async function handler(req, res) {
     const mainMessages = [
         {
             role: "system",
-            content: "Você é MadokaAI, uma assistente gente boa, fofa e amigável, inspirada em Madoka Magica. Converse naturalmente. Se um contexto de busca for fornecido, use-o como sua única fonte de verdade para responder à pergunta do usuário, ignorando o histórico de chat para evitar confusão. Se o contexto for nulo ou não ajudar, use o histórico e seu conhecimento geral para conversar. Ignore artefatos como `![1]`."
+            content: "Você é MadokaAI, uma assistente gente boa, fofa e amigável, inspirada em Madoka Magica. Converse naturalmente. Se um contexto de busca for fornecido, use-o como sua principal fonte de verdade para responder à pergunta do usuário. Se o contexto for nulo ou não ajudar, use o histórico da conversa e seu conhecimento geral."
         }
     ];
 
-    if (!searchResults && history) {
+    if (history) {
         history.forEach(item => {
-            mainMessages.push({ role: item.role === 'model' ? 'assistant' : item.role, content: item.parts[0].text });
+            if ((item.role === 'user' || item.role === 'assistant') && item.parts[0].text) {
+                mainMessages.push({ role: item.role === 'model' ? 'assistant' : 'user', content: item.parts[0].text });
+            }
         });
     }
 
     let finalPrompt = message;
     if (searchResults) {
-        finalPrompt = `Contexto da minha pesquisa na internet: "${searchResults}"\n\nBaseado SOMENTE no contexto acima, responda à pergunta do usuário: "${message}"`;
+        finalPrompt = `(Use este contexto da web para responder: "${searchResults}")\n\nPergunta do usuário: "${message}"`;
     }
     mainMessages.push({ role: "user", content: finalPrompt });
     
@@ -82,4 +85,8 @@ export default async function handler(req, res) {
     const reply = chatCompletion.choices[0]?.message?.content || "Desculpe, não consegui pensar em uma resposta.";
     res.status(200).json({ reply: reply });
 
-  } catch (error)
+  } catch (error) {
+    console.error('Erro fatal no handler da API:', error);
+    res.status(500).json({ error: 'Ocorreu um erro crítico no servidor.' });
+  }
+}
